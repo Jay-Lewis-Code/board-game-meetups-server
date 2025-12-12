@@ -120,10 +120,9 @@ app.delete('/api/events/:id', async (req, res) => {
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath))
 
-  // use '/*' (not '*') to avoid path-to-regexp errors
-  app.get('/*', (req, res) => {
-    // keep /api routes handled by Express; fallback everything else to index.html
-    if (req.path.startsWith('/api')) return res.status(404).end()
+  // final catch‑all handler for non-API routes
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api')) return next()
     res.sendFile(path.join(distPath, 'index.html'))
   })
 } else {
