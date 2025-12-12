@@ -11,6 +11,14 @@ dotenv.config()
  
 const app = express()
 
+// Resolve path to the built frontend (dist folder placed next to this file)
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const distPath = path.resolve(__dirname, './dist')
+
+// Temp run the static dist server due to SSH not available on server
+app.use(express.static("dist"));
+
 // configure CORS: allow specific origin if provided, otherwise permissive in dev
 const corsOptions = {}
 if (process.env.FRONTEND_ORIGIN) {
@@ -87,23 +95,41 @@ app.delete('/api/events/:id', async (req, res) => {
   res.json({ success: true })
 })
 
-// serve static frontend in production (assumes frontend build is at ../board-game-meetups/)
-if (process.env.NODE_ENV === 'production') {
-  const __filename = fileURLToPath(import.meta.url)
-  const __dirname = path.dirname(__filename)
-  const distPath = path.resolve(__dirname, '../board-game-meetups/')
-  if (fs.existsSync(distPath)) {
-    app.use(express.static(distPath))
-    // use '/*' (not '*') to avoid path-to-regexp errors
-    app.get('/*', (req, res) => {
-      // keep /api routes handled by Express; fallback everything else to index.html
-      if (req.path.startsWith('/api')) return res.status(404).end()
-      res.sendFile(path.join(distPath, 'index.html'))
-    })
-  } else {
-    console.warn(`dist not found at ${distPath} — skipping static file serving`)
+/* KEEP AND SWITCH BACK AFTER RETURNING TO FULL STACK
+  // serve static frontend in production (assumes frontend build is at ../board-game-meetups/)
+  if (process.env.NODE_ENV === 'production') {
+    const __filename = fileURLToPath(import.meta.url)
+    const __dirname = path.dirname(__filename)
+    const distPath = path.resolve(__dirname, '../board-game-meetups/')
+    if (fs.existsSync(distPath)) {
+      app.use(express.static(distPath))
+      // use '/*' (not '*') to avoid path-to-regexp errors
+      app.get('/*', (req, res) => {
+        // keep /api routes handled by Express; fallback everything else to index.html
+        if (req.path.startsWith('/api')) return res.status(404).end()
+        res.sendFile(path.join(distPath, 'index.html'))
+      })
+    } else {
+      console.warn(`dist not found at ${distPath} — skipping static file serving`)
+    }
   }
+*/
+
+
+// serve static frontend (built dist) in all environments
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath))
+
+  // use '/*' (not '*') to avoid path-to-regexp errors
+  app.get('/*', (req, res) => {
+    // keep /api routes handled by Express; fallback everything else to index.html
+    if (req.path.startsWith('/api')) return res.status(404).end()
+    res.sendFile(path.join(distPath, 'index.html'))
+  })
+} else {
+  console.warn(`dist not found at ${distPath} — skipping static file serving`)
 }
+
 
 // default fallback port
 const PORT = process.env.PORT || 5028
